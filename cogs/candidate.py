@@ -120,7 +120,7 @@ class CandidateCog(commands.Cog):
         # 후보자 등록 조건 확인
         if (electionmain["start"].date() - joined_date.date()).days < condition["candidate"]:
             logger.command_log(ctx, "Not enough days since joined")
-            embed = discord.Embed(title="후보자 등록 조건을 충족하지 않습니다.", description=f"선거인은 본선거일 기준 서버에 들어온지 {condition["voter"]}일이 경과해야 합니다.", color=discord.Color.red())
+            embed = discord.Embed(title="후보자 등록 조건을 충족하지 않습니다.", description=f"후보자는 본선거일 기준 서버에 들어온지 {condition["candidate"]}일이 경과해야 합니다.", color=discord.Color.red())
             return await ctx.respond(embed=embed, view=None)
         db.execute("SELECT id FROM voters WHERE id = ?", (ctx.author.id,))
         temp = db.fetchall()
