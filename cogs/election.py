@@ -61,11 +61,14 @@ class ElectionCog(commands.Cog):
     @slash_command(name="후보", description="후보자 정보를 확인합니다.")
     async def election_candidates(self, ctx: discord.ApplicationContext):
         logger.command_log(ctx)
-        db.execute("SELECT * FROM candidates ORDER BY number ASC")
+        db.execute("SELECT * FROM candidates ORDER BY number ASC, pk ASC")
         candidates = db.fetchall()
-        if candidates[-1][5] == 0:
-            db.execute("SELECT * FROM candidates ORDER BY pk ASC")
-            candidates = db.fetchall()
+
+        # 후보자 존재 여부 확인
+        if candidates == []:
+            logger.command_log(ctx, "No candidates found")
+            embed = discord.Embed(title="후보자가 없습니다.", description="아직 후보자가 아무도 없습니다.", color=discord.Color.red())
+            return await ctx.respond(embed=embed, view=None)
         """ 후보자 DB TABLE 
             0. pk
             1. display_name (후보자 별명)
@@ -603,11 +606,14 @@ class ElectionCog(commands.Cog):
                 logger.command_log(ctx, "Passphrase mismatch")
                 return await ctx.edit(embed=embed2, view=None)
             
-            db.execute("SELECT * FROM candidates ORDER BY number ASC")
+            db.execute("SELECT * FROM candidates ORDER BY number ASC, pk ASC")
             candidates = db.fetchall()
-            if candidates[-1][5] == 0:
-                db.execute("SELECT * FROM candidates ORDER BY pk ASC")
-                candidates = db.fetchall()
+
+            # 후보자 존재 여부 확인
+            if candidates == []:
+                logger.command_log(ctx, "No candidates found")
+                embed = discord.Embed(title="후보자가 없습니다.", description="아직 후보자가 아무도 없습니다.", color=discord.Color.red())
+                return await ctx.respond(embed=embed, view=None)
             """ 후보자 DB TABLE 
                 0. pk
                 1. display_name (후보자 별명)
