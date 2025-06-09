@@ -657,37 +657,57 @@ class ElectionCog(commands.Cog):
                         self.update_items2()
                     else:
                         self.update_items()
-                    db.execute("SELECT * FROM candidates WHERE pk = ?", (self.selected_candidate,))
-                    candidate_info = db.fetchall()[0]
-                    
-                    embed = discord.Embed(title="후보자 등록 정보", color=discord.Color.blue())
-                    embed.set_thumbnail(url=candidate_info[3])
-                    embed.add_field(name="기호", value=f"{candidate_info[5]}번{"" if candidate_info[10] != 1 else " (사퇴)"}", inline=True)
-                    embed.add_field(name="이름", value=candidate_info[6] if candidate_info[6] != '' else candidate_info[1], inline=True)
-                    embed.add_field(name="표시 이름", value=candidate_info[1], inline=True)
-                    embed.add_field(name="닉네임", value=candidate_info[2], inline=True)
-                    embed.add_field(name="아이디", value=candidate_info[4], inline=True)
-                    db.execute("SELECT name, start, end FROM career WHERE user_id = ? AND type = ?", (candidate_info[4], "elect",))
-                    careers = db.fetchall()
-                    career_str = "(없음)"
-                    if careers != []:
-                        career_str = "\n".join([f"{career[0]} [{dateutil.parser.parse(career[1]).strftime('%Y-%m-%d %H:%M:%S')} ~ {dateutil.parser.parse(career[2]).strftime('%Y-%m-%d %H:%M:%S')}]" for career in careers])
-                    db.execute("SELECT name, start FROM career WHERE user_id = ? AND type = ?", (candidate_info[4], "sentence",))
-                    sentence = db.fetchall()
-                    sentence_str = "(없음)"
-                    if sentence != []:
-                        sentence_str = "\n".join([f"{career[0]} [{dateutil.parser.parse(career[1]).strftime('%Y-%m-%d %H:%M:%S')}]" for career in careers])
-                    joined_server = dateutil.parser.parse(candidate_info[9])
-                    registered_time = dateutil.parser.parse(candidate_info[8])
-                    elasted = (electionmain["start"].date() - joined_server.date()).days
-                    embed.add_field(name="서버 접속 시간", value=f"{joined_server.strftime("%Y-%m-%d %H:%M")} (본투표일 기준 {elasted}일)", inline=False)
-                    embed.add_field(name="후보자 등록 시간", value=registered_time.strftime("%Y-%m-%d %H:%M"), inline=False)
-                    embed.add_field(name="경력 사항", value=f"```md\n{career_str}\n```", inline=False)
-                    embed.add_field(name="처벌 기록", value=f"```md\n{sentence_str}\n```", inline=False)
-                    if self.confirm:
-                        embed.set_footer(text="정말 이 후보에게 투표하시겠습니까? 투표는 취소할 수 없습니다!")
+                    embed = None
+                    if self.selected_candidate != "0":
+                        db.execute("SELECT * FROM candidates WHERE pk = ?", (self.selected_candidate,))
+                        candidate_info = db.fetchall()[0]
+                        
+                        embed = discord.Embed(title="후보자 등록 정보", color=discord.Color.blue())
+                        embed.set_thumbnail(url=candidate_info[3])
+                        embed.add_field(name="기호", value=f"{candidate_info[5]}번{"" if candidate_info[10] != 1 else " (사퇴)"}", inline=True)
+                        embed.add_field(name="이름", value=candidate_info[6] if candidate_info[6] != '' else candidate_info[1], inline=True)
+                        embed.add_field(name="표시 이름", value=candidate_info[1], inline=True)
+                        embed.add_field(name="닉네임", value=candidate_info[2], inline=True)
+                        embed.add_field(name="아이디", value=candidate_info[4], inline=True)
+                        db.execute("SELECT name, start, end FROM career WHERE user_id = ? AND type = ?", (candidate_info[4], "elect",))
+                        careers = db.fetchall()
+                        career_str = "(없음)"
+                        if careers != []:
+                            career_str = "\n".join([f"{career[0]} [{dateutil.parser.parse(career[1]).strftime('%Y-%m-%d %H:%M:%S')} ~ {dateutil.parser.parse(career[2]).strftime('%Y-%m-%d %H:%M:%S')}]" for career in careers])
+                        db.execute("SELECT name, start FROM career WHERE user_id = ? AND type = ?", (candidate_info[4], "sentence",))
+                        sentence = db.fetchall()
+                        sentence_str = "(없음)"
+                        if sentence != []:
+                            sentence_str = "\n".join([f"{career[0]} [{dateutil.parser.parse(career[1]).strftime('%Y-%m-%d %H:%M:%S')}]" for career in careers])
+                        joined_server = dateutil.parser.parse(candidate_info[9])
+                        registered_time = dateutil.parser.parse(candidate_info[8])
+                        elasted = (electionmain["start"].date() - joined_server.date()).days
+                        embed.add_field(name="서버 접속 시간", value=f"{joined_server.strftime("%Y-%m-%d %H:%M")} (본투표일 기준 {elasted}일)", inline=False)
+                        embed.add_field(name="후보자 등록 시간", value=registered_time.strftime("%Y-%m-%d %H:%M"), inline=False)
+                        embed.add_field(name="경력 사항", value=f"```md\n{career_str}\n```", inline=False)
+                        embed.add_field(name="처벌 기록", value=f"```md\n{sentence_str}\n```", inline=False)
+                        if self.confirm:
+                            embed.set_footer(text="정말 이 후보에게 투표하시겠습니까? 투표는 취소할 수 없습니다!")
+                        else:
+                            embed.set_footer(text=None)
                     else:
-                        embed.set_footer(text=None)
+                        embed = discord.Embed(title="후보자 등록 정보", color=discord.Color.blue())
+                        embed.set_thumbnail(url="https://cdn.discordapp.com/embed/avatars/1.png")
+                        embed.add_field(name="기호", value="없음", inline=True)
+                        embed.add_field(name="이름", value="없음", inline=True)
+                        embed.add_field(name="표시 이름", value="없음", inline=True)
+                        embed.add_field(name="닉네임", value="없음", inline=True)
+                        embed.add_field(name="아이디", value="없음", inline=True)
+                        description = "```\n" \
+                                      "1. 기권표를 던지는 행위는 투표율에 포함되어 집계됩니다.\n" \
+                                      "2. 후보를 선택하지 않고 기권표를 던지면 해당 표는 무효표 처리가 됩니다.\n" \
+                                      "3. 투표는 취소할 수 없습니다. 신중히 선택하여 주시길 바랍니다.\n" \
+                                      "```"
+                        embed.add_field(name="기권표를 던집니다.", value=description, inline=False)
+                        if self.confirm:
+                            embed.set_footer(text="정말 기권표를 던지시겠습니까? 투표는 취소할 수 없습니다!")
+                        else:
+                            embed.set_footer(text=None)
                     await interaction.response.edit_message(embed=embed, view=self)
 
                 async def interaction_check(self, interaction):
@@ -714,9 +734,12 @@ class ElectionCog(commands.Cog):
                         # await interaction.response.edit_message(embed=embed, view=None)
                         now = datetime.now()
                         db.execute("UPDATE secure SET voted = 1, votetime = ?, used_securephrase = ? WHERE id = ?", (now, securephrase, ctx.author.id,))
-                        db.execute("SELECT id FROM candidates WHERE pk = ?", (self.parent_view.selected_candidate,))
-                        candidate_id = db.fetchall()
-                        db.execute("INSERT INTO votes (candidate_id, timestamp) VALUES (?, ?)", (candidate_id[0][0], now))
+                        if self.parent_view.selected_candidate == 0:
+                            db.execute("SELECT id FROM candidates WHERE pk = ?", (self.parent_view.selected_candidate,))
+                            candidate_id = db.fetchall()
+                            db.execute("INSERT INTO votes (candidate_id, timestamp) VALUES (?, ?)", (candidate_id[0][0], now))
+                        else:
+                            db.execute("INSERT INTO votes (candidate_id, timestamp) VALUES (?, ?)", (0, now))
                         self.parent_view.voted = True
                         embed = discord.Embed(title="투표가 완료되었습니다.", description=f"{election_name}에 참가해주셔서 감사합니다.", color=discord.Color.green())
                         return await interaction.response.edit_message(embed=embed, view=None)
@@ -748,6 +771,12 @@ class ElectionCog(commands.Cog):
                             emoji=emojis[a[5]] if a[5] <= 10 else emojis[11], # number
                             value=str(a[0])  # pk
                         ))
+                    options.append(discord.SelectOption(
+                        label=f"기권",
+                        description="기권을 합니다.",
+                        emoji="🚫",
+                        value="0"
+                    ))
                     super().__init__(
                         placeholder="후보자 선택",
                         min_values=1,
