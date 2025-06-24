@@ -64,6 +64,15 @@ class database:
                 type TEXT NOT NULL
             );
         ''')
+        self.execute('''
+            CREATE TABLE IF NOT EXISTS turnout (
+                pk INTEGER PRIMARY KEY AUTOINCREMENT,
+                percentage REAL NOT NULL,
+                voted_count INTEGER NOT NULL,
+                total_count INTEGER NOT NULL,
+                timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+            );
+        ''')
         with open("career.json", "r") as fd:
             data = json.load(fd)
         for career in data:

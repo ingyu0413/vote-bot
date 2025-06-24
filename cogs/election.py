@@ -20,6 +20,7 @@ db = database()
     - election_candidates: 후보자 정보를 확인할 수 있는 명령어 (/후보)
     - election_secure: 보안 문자열을 확인하는 명령어 (/보안문자)
     - election_run: 투표하는 명령어 (/투표)
+    - election_turnout: 투표율을 확인하는 명령어 (/투표율)
 """
 class ElectionCog(commands.Cog):
     def __init__(self, bot: discord.AutoShardedBot):
@@ -734,7 +735,7 @@ class ElectionCog(commands.Cog):
                         # await interaction.response.edit_message(embed=embed, view=None)
                         now = datetime.now()
                         db.execute("UPDATE secure SET voted = 1, votetime = ?, used_securephrase = ? WHERE id = ?", (now, securephrase, ctx.author.id,))
-                        if self.parent_view.selected_candidate == 0:
+                        if self.parent_view.selected_candidate != "0":
                             db.execute("SELECT id FROM candidates WHERE pk = ?", (self.parent_view.selected_candidate,))
                             candidate_id = db.fetchall()
                             db.execute("INSERT INTO votes (candidate_id, timestamp) VALUES (?, ?)", (candidate_id[0][0], now))
@@ -742,7 +743,8 @@ class ElectionCog(commands.Cog):
                             db.execute("INSERT INTO votes (candidate_id, timestamp) VALUES (?, ?)", (0, now))
                         self.parent_view.voted = True
                         embed = discord.Embed(title="투표가 완료되었습니다.", description=f"{election_name}에 참가해주셔서 감사합니다.", color=discord.Color.green())
-                        return await interaction.response.edit_message(embed=embed, view=None)
+                        await interaction.response.edit_message(embed=embed, view=None)
+                        self.parent_view.stop()
 
             class Button_Cancel(discord.ui.Button):
                 def __init__(self, view_: CandidateView):
@@ -757,6 +759,7 @@ class ElectionCog(commands.Cog):
                         logger.command_log(ctx, "Cancel Vote")
                         embed = discord.Embed(title="투표를 취소했습니다.")
                         await interaction.response.edit_message(embed=embed, view=None)
+                        self.parent_view.stop()
 
             class Select(discord.ui.Select):
                 def __init__(self, view_: CandidateView, bot_: discord.Bot, ctx_: discord.ApplicationContext, row: int = 0):
@@ -798,6 +801,34 @@ class ElectionCog(commands.Cog):
                 logger.command_log(ctx, "Timed out")
                 embed = discord.Embed(title="시간초과 되었습니다.", description="`명령어를 다시 실행하여 사용해 주시길 바랍니다.`")
                 return await ctx.edit(embed=embed, view=None)
+            
+    @slash_command(name="투표율", description="1시간마다 집계된 투표율을 확인합니다.")
+    async def election_rate(self, ctx: discord.ApplicationContext):
+        logger.command_log(ctx)
+        now = datetime.now()
+
+        # 투표 기간 확인
+        if now < electionmain["start"]:
+            logger.command_log(ctx, "Not voting time")
+            embed = discord.Embed(title="본투표 기간이 아닙니다.",
+                                  description=f"투표율은 본투표 시작 후에 확인하실 수 있습니다.\n\n" \
+                                              f"본 투표 기간: {electionmain['start'].strftime('%Y-%m-%d %H:%M')} ~ {electionmain['end'].strftime('%Y-%m-%d %H:%M')}",
+                                  color=discord.Color.red())
+            return await ctx.respond(embed=embed, view=None)
+
+        # 투표율 확인
+        db.execute("SELECT * FROM turnout ORDER BY timestamp DESC LIMIT 1")
+        temp = db.fetchall()
+        turnout = temp[0][1]
+        voted_count = temp[0][2]
+        total_count = temp[0][3]
+        counting_time = temp[0][4]
+
+        embed = discord.Embed(title="투표율", description=f"현재 투표율은 **{turnout:.2f}%** 입니다.\n\n" \
+                                                          f"투표 참여자 수: {voted_count}명\n" \
+                                                          f"총 선거인 수: {total_count}명", color=discord.Color.blue())
+        embed.set_footer(text=f"집계 시간: {dateutil.parser.parse(counting_time).strftime('%Y-%m-%d %H:%M:%S')}")
+        await ctx.respond(embed=embed, view=None)
 
 def setup(bot):
     bot.add_cog(ElectionCog(bot))

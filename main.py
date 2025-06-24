@@ -4,10 +4,11 @@ from discord.ext import commands, tasks
 import utils.logger as logger
 from utils.db import database
 from utils.config import *
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 import json
 import random
-from datetime import datetime
+from datetime import datetime, timedelta
 from itertools import cycle
 
 with open("config.json", "r") as f:
@@ -133,10 +134,37 @@ class CycleCog(commands.Cog):
         self.change_activity.start()
         logger.log("CycleCog 로딩 성공!")
 
+    @commands.Cog.listener()
+    async def on_ready(self):
+        self.sched = AsyncIOScheduler()
+
+        # 매 정각마다 turnout 함수 실행
+        self.sched.add_job(self.turnout, 'cron', minute=0, hour='*')
+        self.sched.start()
+        logger.log("AsyncIOScheduler 시작됨")
+
     @tasks.loop(seconds=30)
     async def change_activity(self):
         playing = next(activity).format(len(self.bot.guilds))
         await self.bot.change_presence(activity=discord.Game(name=playing))
 
-votebot = Vote_Bot()
-votebot.run(token=token)
+    async def turnout(self):
+        now = datetime.now()
+        if now > electionmain["end"] + timedelta(hours=1):
+            return
+        db.execute("SELECT COUNT(*) FROM secure WHERE voted = 1")
+        voted_count = db.fetchall()[0][0]
+        db.execute("SELECT COUNT(*) FROM voters")
+        total_count = db.fetchall()[0][0]
+        if total_count == 0:
+            turnout_percentage = 0.0
+        else:
+            turnout_percentage = (voted_count / total_count) * 100
+        db.execute("INSERT INTO turnout (percentage, voted_count, total_count, timestamp) VALUES (?, ?, ?, ?)", (turnout_percentage, voted_count, total_count, now))
+        logger.log(f"Turnout recorded: {turnout_percentage:.2f}%")
+
+try:
+    votebot = Vote_Bot()
+    votebot.run(token=token)
+finally:
+    logger.log("--# 봇이 종료되었어요!")
