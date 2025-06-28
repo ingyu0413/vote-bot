@@ -21,6 +21,7 @@ db = database()
     - election_secure: 보안 문자열을 확인하는 명령어 (/보안문자)
     - election_run: 투표하는 명령어 (/투표)
     - election_turnout: 투표율을 확인하는 명령어 (/투표율)
+    - election_result: 투표 결과를 확인하는 명령어 (/투표결과)
 """
 class ElectionCog(commands.Cog):
     def __init__(self, bot: discord.AutoShardedBot):
@@ -829,6 +830,45 @@ class ElectionCog(commands.Cog):
                                                           f"총 선거인 수: {total_count}명", color=discord.Color.blue())
         embed.set_footer(text=f"집계 시간: {dateutil.parser.parse(counting_time).strftime('%Y-%m-%d %H:%M:%S')}")
         await ctx.respond(embed=embed, view=None)
+    
+    @slash_command(name="투표결과", description="투표 결과를 확인합니다.")
+    async def election_result(self, ctx: discord.ApplicationContext):
+        logger.command_log(ctx)
+        now = datetime.now()
+
+        # 투표 기간 확인
+        if now <= electionmain["end"]:
+            logger.command_log(ctx, "Vote is not finished yet")
+            embed = discord.Embed(title="투표가 아직 끝나지 않았습니다.",
+                                  description=f"투표 결과는 본투표 종료 후에 확인하실 수 있습니다.\n\n" \
+                                              f"본 투표 기간: {electionmain['start'].strftime('%Y-%m-%d %H:%M')} ~ {electionmain['end'].strftime('%Y-%m-%d %H:%M')}",
+                                  color=discord.Color.red())
+            return await ctx.respond(embed=embed, view=None)
+        
+        # 투표 종료 확인
+        db.execute("SELECT COUNT(*) FROM final")
+        temp = db.fetchall()[0][0]
+        if temp == 0:
+            logger.command_log(ctx, "final table is empty")
+            embed = discord.Embed(title="개표 결과를 확인할 수 없습니다.",
+                                  description=f"아직 결과가 도출되지 않은 것 같습니다. 잠시 후 다시 실행해주시길 바랍니다.",
+                                  color=discord.Color.red())
+            return await ctx.respond(embed=embed, view=None)
+        
+        db.execute("SELECT COUNT(*) FROM votes")
+        total_votes = db.fetchall()[0][0]
+        db.execute("SELECT * FROM final WHERE rank > 0 ORDER BY rank DESC")
+        results = db.fetchall()
+        db.execute("SELECT * FROM candidates WHERE id = ?", (results[0][0],))
+        candidate_info = db.fetchall()[0]
+        embed = discord.Embed(title="투표 결과",description="🎉 당선되신 것을 축하드립니다!", color=discord.Color.blue())
+        embed.set_thumbnail(url=candidate_info[3])
+        embed.add_field(name="당선(1위)", value=f"[기호 {candidate_info[5]}번] {candidate_info[6] if candidate_info[6] != '' else candidate_info[1]} ({results[0][2]}표, {results[0][2]/total_votes*100:.2f}%)", inline=False)
+        for a in results[1:]:
+            db.execute("SELECT * FROM candidates WHERE id = ?", (a[0],))
+            candidate_info = db.fetchall()[0]
+            embed.add_field(name=f"낙선({a[1]}위)", value=f"[기호 {candidate_info[5]}번] {candidate_info[6] if candidate_info[6] != '' else candidate_info[1]} ({a[2]}표, {a[2]/total_votes*100:.2f}%)", inline=False)
+        embed.set_footer(text="최다 득표자가 다수인 경우 무작위로 추첨하여 순위가 결정됩니다.")
 
 def setup(bot):
     bot.add_cog(ElectionCog(bot))

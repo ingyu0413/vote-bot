@@ -73,6 +73,13 @@ class database:
                 timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
             );
         ''')
+        self.execute('''
+            CREATE TABLE IF NOT EXISTS final (
+                id INTEGER PRIMARY KEY NOT NULL,
+                rank INTEGER DEFAULT 0,
+                votes INTEGER DEFAULT 0
+            );
+        ''')
         with open("career.json", "r") as fd:
             data = json.load(fd)
         for career in data:

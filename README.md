@@ -16,7 +16,10 @@
 
 config.json
 ```json
-{"token":"(DISCORD APPLICATION TOKEN)"}
+{
+  "token":"(DISCORD BOT TOKEN)",
+  "moderator":[523981270611525633]
+}
 ```
 
 data.json
